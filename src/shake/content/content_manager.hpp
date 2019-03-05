@@ -6,8 +6,11 @@
 #include "shake/core/contracts/contracts.hpp"
 #include "shake/core/log.hpp"
 #include "shake/core/data_structures/map.hpp"
+#include "shake/core/data_structures/type_key_map.hpp"
 #include "shake/core/macro_debug_only.hpp"
 #include "shake/core/types/macro_property.hpp"
+#include "shake/core/types/macro_strongly_typed_alias.hpp"
+#include "shake/core/types/type_id.hpp"
 
 #include "shake/io/file.hpp"
 #include "shake/io/path.hpp"
@@ -19,17 +22,44 @@
 #include "shake/content/load_texture.hpp"
 #include "shake/content/load_voxel_grid.hpp"
 
+
+#include <any>
+#include <functional>
+
+
 namespace shake {
 namespace content {
+
+    STRONGLY_TYPED_ALIAS( TypeId, type_id::TypeId )
 
 class ContentManager
 {
 private:
-    template<typename T>
-    using SPtr = std::shared_ptr<T>;
+    template<typename ContentType>
+    using ContentLoader         = std::function< ContentType( ContentManager&, io::Path )>;
+    using RegistryFunction      = std::function< std::any   ( ContentManager&, io::Path )>;
+    using ContentLoaderRegistry = TypeKeyMap<RegistryFunction>;
 
     template<typename T>
-    using Cache = std::map<io::Path, SPtr<T>>;
+    using ContentCache          = std::unordered_map<io::Path, SPtr<T>>;
+
+    using ContentCacheRegistry  = TypeKeyMap<ContentCache>;
+
+
+    ContentLoaderRegistry m_content_loader_registry;
+
+    template<typename Content_T>
+    void  register_loader( const ContentLoader< Content_T >& loader_function )
+    {
+        m_content_loader_registry.emplace<Content_T>( loader_function )
+    }
+
+
+
+
+
+
+
 
 public:
     using Ptr = std::shared_ptr<ContentManager>;
@@ -38,12 +68,7 @@ public:
 
     NON_COPYABLE( ContentManager )
 
-    static
-    ContentManager& get_instance()
-    {
-        static ContentManager content_manager { };
-        return content_manager;
-    }
+    ContentManager() = default;
 
     void init()
     {
@@ -94,7 +119,7 @@ public:
     }
 
 private:
-    ContentManager() {}
+    
 
 public:
 

@@ -4,6 +4,8 @@ add_library(
     ${SHAKE_ALL_SOURCE_FILES}
 )
 
+set_target_properties( ${PROJECT_NAME} PROPERTIES CXX_STANDARD 17 )
+
 include(GenerateExportHeader)
 generate_export_header( ${PROJECT_NAME} )
 
