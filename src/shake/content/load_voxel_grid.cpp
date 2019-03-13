@@ -103,7 +103,7 @@ struct MaterialChunk
 } // namespace anonymous
 
 //----------------------------------------------------------------
-std::unique_ptr<graphics::VoxelGrid> load_voxel_grid( const io::Path& path )
+std::unique_ptr<graphics::VoxelGrid> load_voxel_grid( shake::content::ContentManager* content_manager, const io::Path& path )
 {
     // open a file reader
     auto file_reader = io::FileReader( path );
@@ -205,7 +205,7 @@ std::unique_ptr<graphics::VoxelGrid> load_voxel_grid( const io::Path& path )
         }
     }
 
-    const auto voxel_content = io::file::json::read( ContentManager::get_instance().get_full_path( io::Path( "meshes/voxel.json" ) ) );
+    const auto voxel_content = io::file::json::read( content_manager->get_full_path( io::Path( "meshes/voxel.json" ) ) );
     const auto vertices      = io::file::json::read_as<std::vector<float>>( voxel_content, {"vertices"} );
     const auto indices       = math::integer_sequence<uint32_t>(vertices.size() / 6); // 6 floats per vertex
 

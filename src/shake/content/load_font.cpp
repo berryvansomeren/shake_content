@@ -28,11 +28,9 @@ namespace { // anonymous
 
 FT_Library ft { };
 
-graphics::Font::CharacterMap load_character_map( const io::Path& path )
+graphics::Font::CharacterMap load_character_map( shake::content::ContentManager* content_manager, const io::Path& path )
 {
-    auto& content_manager = ContentManager::get_instance();
-
-    const io::Path full_path { content_manager.get_full_path( path ) };
+    const io::Path full_path { content_manager->get_full_path( path ) };
 
     FT_Face face { };
     CHECK_EQ( FT_New_Face( ft, full_path.c_str(), 0, &face ), 0, "Could not load font." );
@@ -43,7 +41,7 @@ graphics::Font::CharacterMap load_character_map( const io::Path& path )
 
     graphics::Font::CharacterMap character_map { };
 
-    const auto shader = content_manager.get_or_load_shader( io::Path { "shaders/default_text_shader.glsl" } );
+    const auto shader = content_manager->get_or_load<graphics::Shader>( io::Path { "shaders/default_text_shader.glsl" } );
 
     for ( uint8_t c = 0; c < 128; c++)
     {
@@ -105,7 +103,7 @@ void init_font_loader()
     CHECK_EQ( FT_Init_FreeType( &ft ), 0, "Could not init FreeType library." );
 }
 
-std::shared_ptr<graphics::Font> load_font( const io::Path& path )
+std::shared_ptr<graphics::Font> load_font( shake::content::ContentManager* content_manager, const io::Path& path )
 {
     const auto content = io::file::json::read( path );
 
@@ -116,10 +114,10 @@ std::shared_ptr<graphics::Font> load_font( const io::Path& path )
 
     return std::make_shared<graphics::Font>
     (
-        load_character_map( font_default_path ),
-        load_character_map( font_itallic_path ),
-        load_character_map( font_bold_path ),
-        load_character_map( font_bold_itallic_path )
+        load_character_map( content_manager, font_default_path ),
+        load_character_map( content_manager, font_itallic_path ),
+        load_character_map( content_manager, font_bold_path ),
+        load_character_map( content_manager, font_bold_itallic_path )
     );
 }
 

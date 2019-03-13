@@ -5,20 +5,19 @@
 #include "shake/io/file_json.hpp"
 
 #include "shake/content/content_manager.hpp"
+#include "shake/graphics/geometry/voxel_grid.hpp"
 
 namespace shake {
 namespace content {
 namespace load {
 
 //----------------------------------------------------------------
-std::shared_ptr<graphics::Material> load_material(const io::Path& path )
+std::shared_ptr<graphics::Material> load_material( shake::content::ContentManager* content_manager, const io::Path& path )
 {
-    auto& content_manager = ContentManager::get_instance();
-
     const auto json_content = io::file::json::read( path );
 
     const auto shader_path = io::Path{ io::file::json::read_as<std::string>( json_content, "shader" ) };
-    const auto shader = content_manager.get_or_load_shader( shader_path );
+    const auto shader = content_manager->get_or_load<graphics::Shader>( shader_path );
 
     auto material = std::make_shared<graphics::Material>( shader );
 
@@ -29,7 +28,7 @@ std::shared_ptr<graphics::Material> load_material(const io::Path& path )
         {
             if ( uniform_json[ "type" ] == "texture" )
             {
-                const auto voxel_model = content_manager.get_or_load_voxel_grid( io::Path{ io::file::json::read_as<std::string>( uniform_json, "path" ) } );
+                const auto voxel_model = content_manager->get_or_load<graphics::VoxelGrid>( io::Path{ io::file::json::read_as<std::string>( uniform_json, "path" ) } );
                 material->set_uniform( "u_sampler2", std::make_unique<graphics::UniformTexture>( voxel_model->get_palette(), graphics::TextureUnit::Albedo ) );
 
 
@@ -40,7 +39,7 @@ std::shared_ptr<graphics::Material> load_material(const io::Path& path )
 
             else if ( uniform_json[ "type" ] == "cube_map" )
             {
-                const auto cube_map = content_manager.get_or_load_cube_map( io::Path{ io::file::json::read_as<std::string>( uniform_json, "path" ) } );
+                const auto cube_map = content_manager->get_or_load<graphics::CubeMap>( io::Path{ io::file::json::read_as<std::string>( uniform_json, "path" ) } );
                 material->set_uniform( "u_sampler_cube", std::make_unique<graphics::UniformCubeMap>( cube_map, graphics::TextureUnit::Skybox ) );
             }
         }

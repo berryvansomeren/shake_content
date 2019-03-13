@@ -18,9 +18,8 @@ namespace { // anonymous
 
 } // namespace anonymous
 
-std::shared_ptr<graphics::CubeMap> load_cube_map( const io::Path& path )
+std::shared_ptr<graphics::CubeMap> load_cube_map( shake::content::ContentManager* content_manager, const io::Path& path )
 {
-    auto& content_manager = ContentManager::get_instance();
     const auto json = io::file::json::read( path );
 
     const auto cube_face_keys = std::vector<std::string> { "right", "left", "top", "bottom", "front", "back" };
@@ -38,7 +37,7 @@ std::shared_ptr<graphics::CubeMap> load_cube_map( const io::Path& path )
     for ( std::size_t cube_face_index = 0; cube_face_index < graphics::CubeMap::n_cube_faces; ++cube_face_index )
     {
         const auto cube_face_texture_path = io::Path( io::file::json::read_as<std::string>( json, { cube_face_keys[ cube_face_index ] } ) );
-        const auto cube_face_texture_full_path = content_manager.get_full_path( cube_face_texture_path );
+        const auto cube_face_texture_full_path = content_manager->get_full_path( cube_face_texture_path );
 
         auto& image_info = image_data[ cube_face_index ];
 

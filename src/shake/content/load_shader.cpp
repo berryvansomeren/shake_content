@@ -10,7 +10,7 @@ namespace content {
 namespace load {
 
 //----------------------------------------------------------------
-std::unique_ptr<graphics::Shader> load_shader(const io::Path& path)
+std::unique_ptr<graphics::Shader> load_shader( shake::content::ContentManager* content_manager, const io::Path& path)
 {
     const auto source = io::file::read_as_string( path );
     return graphics::Shader::create_basic( source, source );

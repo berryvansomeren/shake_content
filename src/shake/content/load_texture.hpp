@@ -4,14 +4,16 @@
 #include <memory>
 
 #include "shake/io/path.hpp"
-
 #include "shake/graphics/material/texture.hpp"
 
 namespace shake {
 namespace content {
+
+class ContentManager;
+
 namespace load {
 
-std::shared_ptr<graphics::Texture> load_texture ( const io::Path& path );
+std::shared_ptr<graphics::Texture> load_texture ( shake::content::ContentManager* content_manager, const io::Path& path );
 
 } // namespace load
 } // namespace content

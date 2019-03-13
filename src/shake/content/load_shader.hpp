@@ -4,14 +4,16 @@
 #include <memory>
 
 #include "shake/io/path.hpp"
-
 #include "shake/graphics/material/shader.hpp"
 
 namespace shake {
 namespace content {
+
+class ContentManager;
+
 namespace load {
 
-std::unique_ptr<graphics::Shader> load_shader ( const io::Path& path );
+std::unique_ptr<graphics::Shader> load_shader ( shake::content::ContentManager* content_manager, const io::Path& path );
 
 } // namespace load
 } // namespace content

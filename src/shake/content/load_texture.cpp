@@ -1,5 +1,7 @@
 #include "load_texture.hpp"
 
+#include <array>
+
 #include <stb_image.h>
 
 #include "shake/io/file.hpp"
@@ -61,7 +63,7 @@ struct PaletteChunk
 };
 
 //----------------------------------------------------------------
-std::shared_ptr<graphics::Texture> load_voxel_texture( const io::Path& path )
+std::shared_ptr<graphics::Texture> load_voxel_texture( ContentManager* content_manager, const io::Path& path )
 {
     // open a file reader
     auto file_reader = io::FileReader( path );
@@ -117,7 +119,7 @@ std::shared_ptr<graphics::Texture> load_voxel_texture( const io::Path& path )
 }
 
 //----------------------------------------------------------------
-std::shared_ptr<graphics::Texture> load_regular_texture( const io::Path& path )
+std::shared_ptr<graphics::Texture> load_regular_texture( shake::content::ContentManager* content_manager, const io::Path& path )
 {
     const auto content = io::file::json::read( path );
 
@@ -129,7 +131,7 @@ std::shared_ptr<graphics::Texture> load_regular_texture( const io::Path& path )
     const auto generate_mipmaps         = io::file::json::read_as<bool>         ( content, { "generate_mip_maps"   } );
 
     // check if texture path exists
-    const auto full_texture_path = content::ContentManager::get_instance().get_full_path( io::Path( texture_path ) );
+    const auto full_texture_path = content_manager->get_full_path( io::Path( texture_path ) );
     CHECK( io::file::exists( full_texture_path ), "Texture file does not exist." );
 
     // get data from file in memory
@@ -165,9 +167,11 @@ std::shared_ptr<graphics::Texture> load_regular_texture( const io::Path& path )
 } // namespace anonymous
 
 //----------------------------------------------------------------
-std::shared_ptr<graphics::Texture> load_texture( const io::Path& path )
+std::shared_ptr<graphics::Texture> load_texture( ContentManager* content_manager, const io::Path& path )
 {
-    return ( path.get_file_extension() == "vox" ) ? load_voxel_texture( path ) : load_regular_texture( path );
+    return ( path.get_file_extension() == "vox" ) 
+        ? load_voxel_texture    ( content_manager, path ) 
+        : load_regular_texture  ( content_manager, path );
 }
 
 } // namespace load
