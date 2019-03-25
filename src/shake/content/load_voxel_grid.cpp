@@ -1,6 +1,7 @@
 #include "load_voxel_grid.hpp"
 
 #include <array>
+#include <string>
 
 #include "shake/content/content_manager.hpp"
 
@@ -8,6 +9,7 @@
 
 #include "shake/io/file_reader.hpp"
 #include "shake/io/file_json.hpp"
+#include "shake/io/serialize.hpp"
 
 #include "shake/graphics/material/texture.hpp"
 
@@ -20,7 +22,7 @@ namespace { // anonymous
 // Magica Voxel constants and structs
 
 constexpr uint32_t file_id      = 542658390; // *reinterpret_cast<const uint32_t*>( "VOX " );
-constexpr uint32_t file_version = 150; // MagicaVoxel 0.98
+constexpr uint32_t file_version = 150;       // MagicaVoxel 0.98
 
 constexpr uint32_t main_id      = 1313423693; // *reinterpret_cast<const uint32_t*>( "MAIN" );
 constexpr uint32_t pack_id      = 1262698832; // *reinterpret_cast<const uint32_t*>( "PACK" );
@@ -51,7 +53,7 @@ std::array<uint32_t, 256> default_palette
 
 struct FileHeader
 {
-    uint32_t id;
+    std::string id;
     uint32_t version_number;
 };
 
@@ -100,6 +102,19 @@ struct MaterialChunk
     uint32_t property_flags;
 };
 
+
+FileHeader ParseFileHeader( io::FileReader& file_reader )
+{
+    const auto file_header = FileHeader
+    {
+        shake::io::deserialize<std::string> ( file_reader.read_bytes( sizeof( uint32_t) ) ),
+        shake::io::deserialize<uint32_t>    ( file_reader.read_bytes( sizeof( uint32_t) ) )
+    };
+    CHECK_EQ( file_header.id, std::string{ "VOX " }, "Header of VOX file is not as expected." );
+    return file_header;
+}
+
+
 } // namespace anonymous
 
 //----------------------------------------------------------------
@@ -110,9 +125,7 @@ std::unique_ptr<graphics::VoxelGrid> load_voxel_grid( shake::content::ContentMan
     CHECK_GE( file_reader.get_size(), 8, "Vox File is too short. It might be corrupted." );
 
     // parse the header
-    const auto header_bytes = file_reader.read_bytes( sizeof( FileHeader) );
-    const auto p_header = reinterpret_cast< const FileHeader* >( header_bytes.data() );
-    CHECK_EQ( p_header->id, file_id, "Header of VOX file is not as expected." );
+    const auto file_header = ParseFileHeader( file_reader );
 
     // parse the main chunk specifier
     const auto main_chunk_bytes = file_reader.read_bytes( sizeof( ChunkHeader ) );
