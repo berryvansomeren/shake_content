@@ -296,7 +296,7 @@ std::unique_ptr<graphics::VoxelGrid> load_voxel_grid( shake::content::ContentMan
             instances.emplace_back( static_cast<float>( voxel.x ) );
             instances.emplace_back( static_cast<float>( voxel.y ) );
             instances.emplace_back( static_cast<float>( voxel.z ) );
-            instances.emplace_back( static_cast<float>( voxel.color_index - 1 ) );
+            instances.emplace_back( static_cast<float>( voxel.color_index ) );
             instances.emplace_back( static_cast<float>( 0 ) );
         }
     }
