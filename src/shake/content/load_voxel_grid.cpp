@@ -2,6 +2,7 @@
 
 #include <array>
 #include <string>
+#include <optional>
 
 #include "shake/content/content_manager.hpp"
 
@@ -54,12 +55,12 @@ std::array<uint32_t, 256> default_palette
 struct FileHeader
 {
     std::string id;
-    uint32_t version_number;
+    uint32_t version;
 };
 
 struct ChunkHeader
 {
-    uint32_t id;
+    std::string id;
     uint32_t n_bytes_content;
     uint32_t n_bytes_children;
 };
@@ -76,17 +77,12 @@ struct SizeChunk
     uint32_t z_size;
 };
 
-struct VoxelChunk
+struct VoxelChunkHeader
 {
     uint32_t n_voxels;
 };
 
-struct PaletteChunk
-{
-    uint32_t colors[256];
-};
-
-struct Voxel
+struct VoxelData
 {
     uint8_t x;
     uint8_t y;
@@ -94,28 +90,189 @@ struct Voxel
     uint8_t color_index;
 };
 
-struct MaterialChunk
-{
-    uint32_t id;
-    uint32_t type;
-    uint32_t material_weight;
-    uint32_t property_flags;
+struct VoxelChunk
+{   
+    std::vector<VoxelData> voxels;
 };
 
+struct PaletteColor
+{
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t a;
+};
 
-FileHeader ParseFileHeader( io::FileReader& file_reader )
+struct PaletteChunk
+{
+    std::array<PaletteColor, 256> colors;
+};
+
+struct MaterialChunk
+{
+    uint32_t            id;
+    uint32_t            type;
+    float               material_weight;
+    uint32_t            property_flags;
+    std::vector<float>  property_values;
+};
+
+struct VoxRepresentation
+{
+    std::optional<PackChunk>        pack_chunk         = {};
+    std::vector<SizeChunk>          size_chunks        = {};
+    std::vector<VoxelChunk>         voxel_chunks       = {};
+    std::optional<PaletteChunk>     palette_chunk      = {};
+    std::vector<MaterialChunk>      material_chunks    = {};
+};
+
+//----------------------------------------------------------------
+inline void validate_file_header( io::FileReader& file_reader )
 {
     const auto file_header = FileHeader
     {
-        shake::io::deserialize<std::string> ( file_reader.read_bytes( sizeof( uint32_t) ) ),
-        shake::io::deserialize<uint32_t>    ( file_reader.read_bytes( sizeof( uint32_t) ) )
+        file_reader.read<std::string>( sizeof( uint32_t ) ),
+        file_reader.read<uint32_t>()
     };
-    CHECK_EQ( file_header.id, std::string{ "VOX " }, "Header of VOX file is not as expected." );
-    return file_header;
+    CHECK_EQ( file_header.id,       "VOX ", "Header of .vox file has unexpected id."        );
+    CHECK_EQ( file_header.version,  150,    "Header of .vox file has unexpected version."   );
 }
 
+inline void read_chunk( io::FileReader& file_reader, VoxRepresentation& vox_representation );
+
+//----------------------------------------------------------------
+inline void read_main_chunk( const ChunkHeader& chunk_header, io::FileReader& file_reader, VoxRepresentation& vox_representation )
+{
+    CHECK_EQ( chunk_header.id,                  "MAIN", "Unexpected chunk header id."       );
+    CHECK_EQ( chunk_header.n_bytes_content,     0,      "Unexpected chunk size."            );
+    CHECK_GT( chunk_header.n_bytes_children,    0,      "Unexpected chunk children size."   );
+
+    const auto expected_end_position = file_reader.get_position() + chunk_header.n_bytes_children;
+
+    while ( file_reader.get_position() < expected_end_position )
+    {
+        read_chunk( file_reader, vox_representation );
+    }
+
+    CHECK_EQ( file_reader.get_position(), expected_end_position, "Unexpected file reader position." );
+};
+
+//----------------------------------------------------------------
+inline void read_pack_chunk( const ChunkHeader& chunk_header, io::FileReader& file_reader, VoxRepresentation& vox_representation )
+{
+    CHECK_EQ( chunk_header.id,                  "PACK",                 "Unexpected chunk header id."       );
+    CHECK_EQ( chunk_header.n_bytes_content,     sizeof( PackChunk ),    "Chunk is not of expected size."    );
+    CHECK_EQ( chunk_header.n_bytes_children,    0,                      "Unexpected chunk children size."   );
+
+    const auto expected_end_position = file_reader.get_position() + chunk_header.n_bytes_content;
+
+    const auto pack_chunk = file_reader.read<PackChunk>();
+    vox_representation.pack_chunk = pack_chunk;
+    vox_representation.size_chunks.reserve( pack_chunk.n_models );
+    vox_representation.voxel_chunks.reserve( pack_chunk.n_models );
+
+    CHECK_EQ( file_reader.get_position(), expected_end_position, "Unexpected file reader position." );
+}
+
+//----------------------------------------------------------------
+inline void read_size_chunk( const ChunkHeader& chunk_header, io::FileReader& file_reader, VoxRepresentation& vox_representation )
+{
+    CHECK_EQ( chunk_header.id,                  "SIZE",                 "Unexpected chunk header id."       );
+    CHECK_EQ( chunk_header.n_bytes_content,     sizeof( SizeChunk ),    "Chunk is not of expected size."    );
+    CHECK_EQ( chunk_header.n_bytes_children,    0,                      "Unexpected chunk children size."   );
+
+    const auto expected_end_position = file_reader.get_position() + chunk_header.n_bytes_content;
+
+    vox_representation.size_chunks.emplace_back( file_reader.read<SizeChunk>() );
+
+    CHECK_EQ( file_reader.get_position(), expected_end_position, "Unexpected file reader position." );
+}
+
+//----------------------------------------------------------------
+inline void read_voxel_chunk( const ChunkHeader& chunk_header, io::FileReader& file_reader, VoxRepresentation& vox_representation )
+{
+    CHECK_EQ( chunk_header.id,                  "XYZI",                 "Unexpected chunk header id."       );
+    CHECK_EQ( chunk_header.n_bytes_children,    0,                      "Unexpected chunk children size."   );
+
+    const auto expected_end_position = file_reader.get_position() + chunk_header.n_bytes_content;
+
+    const auto voxel_chunk_header = file_reader.read<VoxelChunkHeader>();
+    CHECK_EQ( chunk_header.n_bytes_content, voxel_chunk_header.n_voxels * sizeof( VoxelData ) + sizeof( VoxelChunkHeader ), "Chunk is not of expected size." );
+
+    // parse all voxels within the chunk
+    auto voxel_chunk = VoxelChunk{};
+    voxel_chunk.voxels.reserve( voxel_chunk_header.n_voxels );
+    for ( size_t voxel_index = 0; voxel_index < voxel_chunk_header.n_voxels; ++voxel_index )
+    {
+        voxel_chunk.voxels.emplace_back( file_reader.read<VoxelData>() );
+    }
+    vox_representation.voxel_chunks.emplace_back( voxel_chunk );
+
+    CHECK_EQ( file_reader.get_position(), expected_end_position, "Unexpected file reader position." );
+}
+
+//----------------------------------------------------------------
+inline void read_palette_chunk( const ChunkHeader& chunk_header, io::FileReader& file_reader, VoxRepresentation& vox_representation )
+{
+    CHECK_EQ( chunk_header.id,                  "RGBA",                 "Unexpected chunk header id."       );
+    CHECK_EQ( chunk_header.n_bytes_content,     sizeof( PaletteChunk ), "Chunk is not of expected size."    );
+    CHECK_EQ( chunk_header.n_bytes_children,    0,                      "Unexpected chunk children size."   );
+
+    const auto expected_end_position = file_reader.get_position() + chunk_header.n_bytes_content;
+    
+    auto palette_chunk = PaletteChunk{};
+    palette_chunk.colors.at( 0 ) = PaletteColor{ 0, 0, 0, 0 };
+    // Colors [0-254] are mapped to palette index [1-255], e.g
+    // Also see official .vox file format documentation
+    for ( size_t color_index = 0; color_index < 255; ++color_index )
+    {
+        palette_chunk.colors.at( color_index + 1 ) = PaletteColor
+        {
+            file_reader.read<uint8_t>(),
+            file_reader.read<uint8_t>(),
+            file_reader.read<uint8_t>(),
+            file_reader.read<uint8_t>()
+        };
+    }
+    vox_representation.palette_chunk = palette_chunk;
+
+    // because of the mapping mentioned above, we need to compensate for the missing first color
+    file_reader.read<uint32_t>(); 
+
+    CHECK_EQ( file_reader.get_position(), expected_end_position, "Unexpected file reader position." );
+}
+
+//----------------------------------------------------------------
+inline void read_material_chunk( const ChunkHeader& chunk_header, io::FileReader& file_reader, VoxRepresentation& vox_representation )
+{
+    CHECK_EQ( chunk_header.id,                  "MATT", "Unexpected chunk header id."       );
+    CHECK_EQ( chunk_header.n_bytes_children,    0,      "Unexpected chunk children size."   );
+
+    // We don't implement this for now
+}
+
+//----------------------------------------------------------------
+inline void read_chunk( io::FileReader& file_reader, VoxRepresentation& vox_representation )
+{
+    const auto chunk_header = ChunkHeader
+    {
+        file_reader.read<std::string>( sizeof( uint32_t ) ),
+        file_reader.read<uint32_t>(),
+        file_reader.read<uint32_t>()
+    };
+
+         if ( chunk_header.id == "MAIN" ) { read_main_chunk     ( chunk_header, file_reader, vox_representation ); return; }
+    else if ( chunk_header.id == "PACK" ) { read_pack_chunk     ( chunk_header, file_reader, vox_representation ); return;}
+    else if ( chunk_header.id == "SIZE" ) { read_size_chunk     ( chunk_header, file_reader, vox_representation ); return; }
+    else if ( chunk_header.id == "XYZI" ) { read_voxel_chunk    ( chunk_header, file_reader, vox_representation ); return; }
+    else if ( chunk_header.id == "RGBA" ) { read_palette_chunk  ( chunk_header, file_reader, vox_representation ); return; }
+    else if ( chunk_header.id == "MATT" ) { read_material_chunk ( chunk_header, file_reader, vox_representation ); return; }
+
+    CHECK_FAIL( "Chunk header has invalid id: " + chunk_header.id );
+}
 
 } // namespace anonymous
+
 
 //----------------------------------------------------------------
 std::unique_ptr<graphics::VoxelGrid> load_voxel_grid( shake::content::ContentManager* content_manager, const io::Path& path )
@@ -124,92 +281,18 @@ std::unique_ptr<graphics::VoxelGrid> load_voxel_grid( shake::content::ContentMan
     auto file_reader = io::FileReader( path );
     CHECK_GE( file_reader.get_size(), 8, "Vox File is too short. It might be corrupted." );
 
-    // parse the header
-    const auto file_header = ParseFileHeader( file_reader );
-
-    // parse the main chunk specifier
-    const auto main_chunk_bytes = file_reader.read_bytes( sizeof( ChunkHeader ) );
-    const auto p_main_chunk = reinterpret_cast< const ChunkHeader* >( main_chunk_bytes.data() );
-    CHECK_EQ( p_main_chunk->id, main_id, "Main chunk not found" );
-    CHECK_GT( p_main_chunk->n_bytes_children, 0, "Main chunk does not contain children." );
-    CHECK_EQ( p_main_chunk->n_bytes_content, 0, "Main chunk contains unexpected content." );
-
-    // some variables to hold data while parsing
-    auto size_chunks    = std::vector<SizeChunk>( 1 );
-    auto voxel_models   = std::vector<std::vector<Voxel>>( );
-    auto palette        = default_palette;
-
-    // parse the chunks
-    while ( file_reader.get_position() < file_reader.get_size() )
-    {
-        const auto chunk_header_bytes = file_reader.read_bytes( sizeof( ChunkHeader) );
-        const auto p_chunk_header = reinterpret_cast< const ChunkHeader* >( chunk_header_bytes.data() );
-        const auto chunk_id = p_chunk_header->id;
-        CHECK_EQ( p_chunk_header->n_bytes_children, 0, "Chunk contains unexpected children." );
-        CHECK_GT( p_chunk_header->n_bytes_content, 0, "Chunk doesn't contain any content." );
-
-        // parse an optional pack chunk
-        // only present when there are multiple models
-        if ( chunk_id == pack_id )
-        {
-            CHECK_EQ( p_chunk_header->n_bytes_content, sizeof( PackChunk ), "Chunk is not of expected size." );
-            const auto pack_chunk_bytes = file_reader.read_bytes( sizeof( PackChunk ) );
-            const auto p_pack_chunk = reinterpret_cast< const PackChunk* >( pack_chunk_bytes.data() );
-            size_chunks.reserve( p_pack_chunk->n_models );
-            voxel_models.reserve( p_pack_chunk->n_models );
-        }
-
-        // parse a size chunk which defines the size of a voxel chunk
-        else if ( chunk_id == size_id )
-        {
-            CHECK_EQ( p_chunk_header->n_bytes_content, sizeof( SizeChunk ), "Chunk is not of expected size." );
-            const auto size_chunk_bytes = file_reader.read_bytes( sizeof( SizeChunk ) );
-            const auto size_chunk = *reinterpret_cast< const SizeChunk* >( size_chunk_bytes.data() );
-            size_chunks.emplace_back( size_chunk );
-        }
-
-        // parse a voxel chunk, which has the size specified by the last size chunk
-        else if ( chunk_id == voxel_id )
-        {
-            const auto voxel_chunk_bytes = file_reader.read_bytes( sizeof( VoxelChunk ) );
-            const auto p_voxel_chunk = reinterpret_cast< const VoxelChunk* >( voxel_chunk_bytes.data() );
-            CHECK_EQ( p_chunk_header->n_bytes_content, p_voxel_chunk->n_voxels * sizeof( Voxel ) + sizeof( VoxelChunk), "Chunk is not of expected size." );
-
-            // parse all voxels within the chunk
-            auto voxels = std::vector<Voxel> { };
-            voxels.reserve( p_voxel_chunk->n_voxels );
-
-            for ( size_t i = 0; i < p_voxel_chunk->n_voxels; ++i )
-            {
-                const auto voxel_bytes = file_reader.read_bytes( sizeof( Voxel ) );
-                const auto voxel = *reinterpret_cast< const Voxel* >( voxel_bytes.data() );
-                voxels.emplace_back( voxel );
-            }
-
-            voxel_models.emplace_back( voxels );
-        }
-
-        // parse an optional palette chunk
-        else if ( chunk_id == palette_id )
-        {
-            CHECK_EQ( p_chunk_header->n_bytes_content, sizeof( PaletteChunk ), "Chunk is not of expected size." );
-            const auto palette_chunk_bytes = file_reader.read_bytes( sizeof( PaletteChunk ) );
-            const auto p_palette_chunk = reinterpret_cast< const PaletteChunk* >( palette_chunk_bytes.data() );
-            auto palette_from_chunk = std::array<uint32_t, 256> { };
-            std::copy( std::begin( p_palette_chunk->colors ), std::end( p_palette_chunk->colors  ), std::begin( palette_from_chunk ) );
-            palette = palette_from_chunk;
-        }
-    }
-
+    // parse the .vox file
+    validate_file_header( file_reader );
+    auto vox_representation = VoxRepresentation{};
+    read_chunk( file_reader, vox_representation );
+    
     // transform the vox data into our own voxel model
     auto instances = std::vector< float > { };
 
-    for ( const auto& voxels : voxel_models )
+    for ( const auto& voxel_chunk : vox_representation.voxel_chunks )
     {
-        for ( const auto& voxel : voxels )
+        for ( const auto& voxel : voxel_chunk.voxels )
         {
-            //instances.reserve( instances.size() + ( voxels.size() * 5 ) );
-
             instances.emplace_back( static_cast<float>( voxel.x ) );
             instances.emplace_back( static_cast<float>( voxel.y ) );
             instances.emplace_back( static_cast<float>( voxel.z ) );
@@ -222,9 +305,13 @@ std::unique_ptr<graphics::VoxelGrid> load_voxel_grid( shake::content::ContentMan
     const auto vertices      = io::file::json::read_as<std::vector<float>>( voxel_content, {"vertices"} );
     const auto indices       = math::integer_sequence<uint32_t>(vertices.size() / 6); // 6 floats per vertex
 
-    const auto palette_texture = std::make_shared<graphics::Texture>
+    const auto palette_data = vox_representation.palette_chunk.has_value()
+        ? reinterpret_cast<uint8_t*>( vox_representation.palette_chunk.value().colors.data() )
+        : reinterpret_cast<uint8_t*>( default_palette.data() );
+
+    auto palette_texture = std::make_shared<graphics::Texture>
     (
-        reinterpret_cast<uint8_t*>( palette.data() ),
+        palette_data,
         256,
         1,
         graphics::ImageFormat::RGBA,
@@ -232,9 +319,10 @@ std::unique_ptr<graphics::VoxelGrid> load_voxel_grid( shake::content::ContentMan
         graphics::InterpolationMode::Nearest,
         false
     );
-
+    
     return std::make_unique<graphics::VoxelGrid>( vertices, indices, instances, palette_texture );
 }
+
 
 } // namespace load
 } // namespace content
