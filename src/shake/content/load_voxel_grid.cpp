@@ -20,18 +20,6 @@ namespace load {
 
 namespace { // anonymous
 
-// Magica Voxel constants and structs
-
-constexpr uint32_t file_id      = 542658390; // *reinterpret_cast<const uint32_t*>( "VOX " );
-constexpr uint32_t file_version = 150;       // MagicaVoxel 0.98
-
-constexpr uint32_t main_id      = 1313423693; // *reinterpret_cast<const uint32_t*>( "MAIN" );
-constexpr uint32_t pack_id      = 1262698832; // *reinterpret_cast<const uint32_t*>( "PACK" );
-constexpr uint32_t size_id      = 1163544915; // *reinterpret_cast<const uint32_t*>( "SIZE" );
-constexpr uint32_t voxel_id     = 1230657880; // *reinterpret_cast<const uint32_t*>( "XYZI" );
-constexpr uint32_t palette_id   = 1094862674; // *reinterpret_cast<const uint32_t*>( "RGBA" );
-constexpr uint32_t material_id  = 1414807885; // *reinterpret_cast<const uint32_t*>( "MATT" );
-
 std::array<uint32_t, 256> default_palette
 {
     0x00000000, 0xffffffff, 0xffccffff, 0xff99ffff, 0xff66ffff, 0xff33ffff, 0xff00ffff, 0xffffccff, 0xffccccff, 0xff99ccff, 0xff66ccff, 0xff33ccff, 0xff00ccff, 0xffff99ff, 0xffcc99ff, 0xff9999ff,
@@ -151,6 +139,7 @@ inline void read_main_chunk( const ChunkHeader& chunk_header, io::FileReader& fi
 
     while ( file_reader.get_position() < expected_end_position )
     {
+        CHECK_LT( file_reader.get_position(), expected_end_position, "Unexpected file reader position." );
         read_chunk( file_reader, vox_representation );
     }
 
@@ -226,29 +215,14 @@ inline void read_palette_chunk( const ChunkHeader& chunk_header, io::FileReader&
     // Also see official .vox file format documentation
     for ( size_t color_index = 0; color_index < 255; ++color_index )
     {
-        palette_chunk.colors.at( color_index + 1 ) = PaletteColor
-        {
-            file_reader.read<uint8_t>(),
-            file_reader.read<uint8_t>(),
-            file_reader.read<uint8_t>(),
-            file_reader.read<uint8_t>()
-        };
+        palette_chunk.colors.at( color_index + 1 ) = file_reader.read<PaletteColor>();
     }
     vox_representation.palette_chunk = palette_chunk;
 
-    // because of the mapping mentioned above, we need to compensate for the missing first color
-    file_reader.read<uint32_t>(); 
+    // because of the mapping mentioned above, we need to compensate for one missing color
+    file_reader.advance( sizeof( uint32_t ) ); 
 
     CHECK_EQ( file_reader.get_position(), expected_end_position, "Unexpected file reader position." );
-}
-
-//----------------------------------------------------------------
-inline void read_material_chunk( const ChunkHeader& chunk_header, io::FileReader& file_reader, VoxRepresentation& vox_representation )
-{
-    CHECK_EQ( chunk_header.id,                  "MATT", "Unexpected chunk header id."       );
-    CHECK_EQ( chunk_header.n_bytes_children,    0,      "Unexpected chunk children size."   );
-
-    // We don't implement this for now
 }
 
 //----------------------------------------------------------------
@@ -262,13 +236,16 @@ inline void read_chunk( io::FileReader& file_reader, VoxRepresentation& vox_repr
     };
 
          if ( chunk_header.id == "MAIN" ) { read_main_chunk     ( chunk_header, file_reader, vox_representation ); return; }
-    else if ( chunk_header.id == "PACK" ) { read_pack_chunk     ( chunk_header, file_reader, vox_representation ); return;}
+    else if ( chunk_header.id == "PACK" ) { read_pack_chunk     ( chunk_header, file_reader, vox_representation ); return; }
     else if ( chunk_header.id == "SIZE" ) { read_size_chunk     ( chunk_header, file_reader, vox_representation ); return; }
     else if ( chunk_header.id == "XYZI" ) { read_voxel_chunk    ( chunk_header, file_reader, vox_representation ); return; }
     else if ( chunk_header.id == "RGBA" ) { read_palette_chunk  ( chunk_header, file_reader, vox_representation ); return; }
-    else if ( chunk_header.id == "MATT" ) { read_material_chunk ( chunk_header, file_reader, vox_representation ); return; }
-
-    CHECK_FAIL( "Chunk header has invalid id: " + chunk_header.id );
+    else
+    {
+        // We don't parse the chunk
+        // But we still need to advance the file reader
+        file_reader.advance( chunk_header.n_bytes_content + chunk_header.n_bytes_children );
+    }
 }
 
 } // namespace anonymous
@@ -308,6 +285,8 @@ std::unique_ptr<graphics::VoxelGrid> load_voxel_grid( shake::content::ContentMan
     const auto palette_data = vox_representation.palette_chunk.has_value()
         ? reinterpret_cast<uint8_t*>( vox_representation.palette_chunk.value().colors.data() )
         : reinterpret_cast<uint8_t*>( default_palette.data() );
+
+    //const auto palette_data = reinterpret_cast<uint8_t*>( default_palette.data() );
 
     auto palette_texture = std::make_shared<graphics::Texture>
     (

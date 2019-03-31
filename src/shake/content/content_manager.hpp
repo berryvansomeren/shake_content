@@ -182,7 +182,6 @@ public:
     }
 
 public:
-    PROPERTY_W ( io::Path,              shake_content_directory     )
     PROPERTY_R ( std::vector<io::Path>, hosted_content_directories  )
 
     ContentLoaderRegistry   m_content_loader_registry;

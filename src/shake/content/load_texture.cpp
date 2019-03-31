@@ -169,9 +169,18 @@ std::shared_ptr<graphics::Texture> load_regular_texture( shake::content::Content
 //----------------------------------------------------------------
 std::shared_ptr<graphics::Texture> load_texture( ContentManager* content_manager, const io::Path& path )
 {
-    return ( path.get_file_extension() == "vox" ) 
-        ? load_voxel_texture    ( content_manager, path ) 
-        : load_regular_texture  ( content_manager, path );
+    const auto file_extension = path.get_file_extension();
+
+    if ( file_extension == ".vox" )
+    {
+        return load_voxel_texture( content_manager, path );
+    }
+    else if ( file_extension == ".json" )
+    {
+        return load_regular_texture( content_manager, path );
+    }
+
+    CHECK_FAIL( "Unrecognised texture file extension: " + file_extension );
 }
 
 } // namespace load
