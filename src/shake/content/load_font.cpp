@@ -14,9 +14,12 @@
 #include "shake/io/file.hpp"
 #include "shake/io/file_json.hpp"
 
+#include "shake/graphics/gl/gl_enum.hpp"
+#include "shake/graphics/gl/gl_int.hpp"
 #include "shake/graphics/assets/font.hpp"
 #include "shake/graphics/material/material.hpp"
 #include "shake/graphics/geometry/geometry_2d.hpp"
+#include "shake/graphics/geometry/primitive_2d.hpp"
 
 #include "shake/graphics/assets/sprite.hpp"
 
@@ -54,10 +57,8 @@ graphics::Font::CharacterMap load_character_map( shake::content::ContentManager*
             face->glyph->bitmap.buffer,
             face->glyph->bitmap.width,
             face->glyph->bitmap.rows,
-            graphics::ImageFormat::R,
-            graphics::TextureFormat::R,
-            graphics::InterpolationMode::Linear,
-            false
+            graphics::gl::TextureFormat::R,
+            graphics::gl::Filter::Linear
         );
 
         const auto sprite = std::make_shared<graphics::Sprite>
@@ -73,7 +74,7 @@ graphics::Font::CharacterMap load_character_map( shake::content::ContentManager*
             std::make_shared<graphics::Material>( shader )
         };
 
-        render_pack.material->set_uniform( "u_sampler2", std::make_unique<graphics::UniformTexture>( texture, graphics::TextureUnit::Albedo ) );
+        render_pack.material->set_uniform( "u_sampler2", std::make_unique<graphics::UniformTexture>( texture, to_texture_unit_index( graphics::gl::NamedTextureUnit::Albedo ) ) );
 
         // Now store character for later use
         graphics::Font::Character character

@@ -293,10 +293,8 @@ std::unique_ptr<graphics::VoxelGrid> load_voxel_grid( shake::content::ContentMan
         palette_data,
         256,
         1,
-        graphics::ImageFormat::RGBA,
-        graphics::TextureFormat::RGBA,
-        graphics::InterpolationMode::Nearest,
-        false
+        graphics::gl::TextureFormat::RGBA,
+        graphics::gl::Filter::Nearest
     );
     
     return std::make_unique<graphics::VoxelGrid>( vertices, indices, instances, palette_texture );

@@ -10,6 +10,7 @@
 #include "shake/core/data_structures/map.hpp"
 #include "shake/content/content_manager.hpp"
 #include "shake/io/file_json.hpp"
+#include "shake/graphics/material/texture_parameters.hpp"
 
 namespace shake {
 namespace content {
@@ -56,10 +57,8 @@ std::shared_ptr<graphics::CubeMap> load_cube_map( shake::content::ContentManager
     const auto texture = std::make_shared<graphics::CubeMap>
     (
         image_data,
-        graphics::string_to_image_format       ( image_format_str          ),
-        graphics::string_to_texture_format     ( texture_format_str        ),
-        graphics::string_to_interpolation_mode ( interpolation_mode_str    ),
-        generate_mipmaps
+        graphics::to_texture_format( texture_format_str ),
+        graphics::to_filter( interpolation_mode_str )
     );
 
     // clear memory from cpu

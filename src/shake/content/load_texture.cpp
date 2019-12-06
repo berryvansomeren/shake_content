@@ -4,11 +4,15 @@
 
 #include <stb_image.h>
 
+#include "shake/core/macros/macro_define_mapping.hpp"
+
 #include "shake/io/file.hpp"
 #include "shake/io/file_json.hpp"
 #include "shake/io/file_reader.hpp"
 
 #include "shake/content/content_manager.hpp"
+
+#include "shake/graphics/material/texture_parameters.hpp"
 
 namespace shake {
 namespace content {
@@ -62,6 +66,7 @@ struct PaletteChunk
     uint32_t colors[256];
 };
 
+
 //----------------------------------------------------------------
 std::shared_ptr<graphics::Texture> load_voxel_texture( ContentManager* content_manager, const io::Path& path )
 {
@@ -109,10 +114,8 @@ std::shared_ptr<graphics::Texture> load_voxel_texture( ContentManager* content_m
         reinterpret_cast<uint8_t*>( palette.data() ),
         256,
         1,
-        graphics::ImageFormat::RGBA,
-        graphics::TextureFormat::RGBA,
-        graphics::InterpolationMode::Nearest,
-        false
+        graphics::gl::TextureFormat::RGBA,
+        graphics::gl::Filter::Nearest
     );
 
     return palette_texture;
@@ -151,11 +154,11 @@ std::shared_ptr<graphics::Texture> load_regular_texture( shake::content::Content
     // load texture on gpu
     const auto texture = std::make_shared<graphics::Texture>
     (
-        stb_image_ptr, width, height,
-        graphics::string_to_image_format       ( image_format_str          ),
-        graphics::string_to_texture_format     ( texture_format_str        ),
-        graphics::string_to_interpolation_mode ( interpolation_mode_str    ),
-        generate_mipmaps
+        stb_image_ptr, 
+        width,
+        height,
+        graphics::to_texture_format( texture_format_str ),
+        graphics::to_filter( interpolation_mode_str )
     );
 
     // clear memory from cpu

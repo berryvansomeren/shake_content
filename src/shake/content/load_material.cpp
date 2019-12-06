@@ -6,6 +6,7 @@
 
 #include "shake/content/content_manager.hpp"
 #include "shake/graphics/geometry/voxel_grid.hpp"
+#include "shake/graphics/gl/gl_enum.hpp"
 
 namespace shake {
 namespace content {
@@ -34,12 +35,14 @@ std::shared_ptr<graphics::Material> load_material( shake::content::ContentManage
                 if ( file_extension == ".vox" )
                 {
                     const auto voxel_model = content_manager->get_or_load<graphics::VoxelGrid>( io::Path{ io::file::json::read_as<std::string>( uniform_json, "path" ) } );
-                    material->set_uniform( "u_sampler2", std::make_unique<graphics::UniformTexture>( voxel_model->get_palette(), graphics::TextureUnit::Albedo ) );
+                    const auto texture_unit_index = to_texture_unit_index( graphics::gl::NamedTextureUnit::Albedo );
+                    material->set_uniform( "u_sampler2", std::make_unique<graphics::UniformTexture>( voxel_model->get_palette(), texture_unit_index ) );
                 }
                 else if ( file_extension == ".json" )
                 {
                     const auto texture = content_manager->get_or_load<graphics::Texture>( texture_path );
-                    material->set_uniform( "u_sampler2", std::make_unique<graphics::UniformTexture>( texture, graphics::TextureUnit::Albedo ) );
+                    const auto texture_unit_index = to_texture_unit_index( graphics::gl::NamedTextureUnit::Albedo );
+                    material->set_uniform( "u_sampler2", std::make_unique<graphics::UniformTexture>( texture, texture_unit_index ) );
                 }
                 else
                 {
@@ -50,7 +53,8 @@ std::shared_ptr<graphics::Material> load_material( shake::content::ContentManage
             else if ( uniform_json[ "type" ] == "cube_map" )
             {
                 const auto cube_map = content_manager->get_or_load<graphics::CubeMap>( io::Path{ io::file::json::read_as<std::string>( uniform_json, "path" ) } );
-                material->set_uniform( "u_sampler_cube", std::make_unique<graphics::UniformCubeMap>( cube_map, graphics::TextureUnit::Skybox ) );
+                const auto texture_unit_index = to_texture_unit_index( graphics::gl::NamedTextureUnit::Skybox );
+                material->set_uniform( "u_sampler_cube", std::make_unique<graphics::UniformCubeMap>( cube_map, texture_unit_index ) );
             }
         }
     }
