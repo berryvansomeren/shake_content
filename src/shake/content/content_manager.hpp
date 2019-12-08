@@ -1,8 +1,6 @@
 #ifndef CONTENT_MANAGER_HPP
 #define CONTENT_MANAGER_HPP
 
-#include <glad/glad.h>
-
 #include <any>
 #include <functional>
 #include <memory>
@@ -31,11 +29,6 @@
 namespace shake {
 namespace content {
 
-
-using GLLoadProc = void* (*) ( const char* name );
-void init_gl( const GLLoadProc& gl_load_proc );
-
-
 class ContentManager
 {
 private:
@@ -60,14 +53,8 @@ public:
     NON_COPYABLE( ContentManager )
 
     //----------------------------------------------------------------
-    void init( const GLLoadProc& gl_load_proc )
+    void init()
     {
-        const auto load_success = gladLoadGLLoader( ( GLADloadproc ) gl_load_proc );
-        if ( !load_success ) 
-        {
-            CHECK_FAIL( "Could not initialize OpenGl Context" );
-        }
-
         load::init_font_loader();
 
         register_content_type<graphics::CubeMap>    ( load::load_cube_map   );

@@ -4,7 +4,6 @@
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
-#include <glad/glad.h>
 
 #include "shake/core/contracts/contracts.hpp"
 #include "shake/core/math/math.hpp"
@@ -40,7 +39,7 @@ graphics::Font::CharacterMap load_character_map( shake::content::ContentManager*
 
     FT_Set_Pixel_Sizes( face, 0, 64 );
 
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // Disable byte-alignment restriction
+    graphics::gl::pixel_store( graphics::gl::PixelStorageMode::UnpackAlignment, graphics::gl::SizeI { 1 } );
 
     graphics::Font::CharacterMap character_map { };
 
@@ -90,7 +89,7 @@ graphics::Font::CharacterMap load_character_map( shake::content::ContentManager*
         character_map.insert( { c, character } );
     }
 
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // Set back to initial value
+    graphics::gl::pixel_store( graphics::gl::PixelStorageMode::UnpackAlignment, graphics::gl::SizeI { 4 } ); // Set back to initial value
 
     FT_Done_Face( face );
 
