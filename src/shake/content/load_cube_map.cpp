@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "shake/core/data_structures/map.hpp"
+#include "shake/core/std/map.hpp"
 #include "shake/content/content_manager.hpp"
 #include "shake/io/file_json.hpp"
 #include "shake/graphics/material/texture_parameters.hpp"
