@@ -5,7 +5,7 @@
 #include "shake/io/file_json.hpp"
 
 #include "shake/content/content_manager.hpp"
-#include "shake/graphics/geometry/voxel_grid.hpp"
+//#include "shake/graphics/geometry/voxel_grid.hpp"
 #include "shake/graphics/gl/gl_enum.hpp"
 
 namespace shake {
@@ -32,13 +32,14 @@ std::shared_ptr<graphics::Material> load_material( shake::content::ContentManage
                 const auto texture_path = io::Path{ io::file::json::read_as<std::string>( uniform_json, "path" ) };
                 const auto file_extension = texture_path.get_file_extension();
 
-                if ( file_extension == ".vox" )
-                {
-                    const auto voxel_model = content_manager->get_or_load<graphics::VoxelGrid>( io::Path{ io::file::json::read_as<std::string>( uniform_json, "path" ) } );
-                    const auto texture_unit_index = to_texture_unit_index( graphics::gl::NamedTextureUnit::Albedo );
-                    material->set_uniform( "u_sampler2", std::make_unique<graphics::UniformTexture>( voxel_model->get_palette(), texture_unit_index ) );
-                }
-                else if ( file_extension == ".json" )
+                //if ( file_extension == ".vox" )
+                //{
+                //    const auto voxel_model = content_manager->get_or_load<graphics::VoxelGrid>( io::Path{ io::file::json::read_as<std::string>( uniform_json, "path" ) } );
+                //    const auto texture_unit_index = to_texture_unit_index( graphics::gl::NamedTextureUnit::Albedo );
+                //    material->set_uniform( "u_sampler2", std::make_unique<graphics::UniformTexture>( voxel_model->get_palette(), texture_unit_index ) );
+                //}
+                //else 
+                if ( file_extension == ".json" )
                 {
                     const auto texture = content_manager->get_or_load<graphics::Texture>( texture_path );
                     const auto texture_unit_index = to_texture_unit_index( graphics::gl::NamedTextureUnit::Albedo );

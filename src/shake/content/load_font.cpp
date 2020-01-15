@@ -18,7 +18,6 @@
 #include "shake/graphics/assets/font.hpp"
 #include "shake/graphics/material/material.hpp"
 #include "shake/graphics/geometry/geometry_2d.hpp"
-#include "shake/graphics/geometry/primitive_2d.hpp"
 
 #include "shake/graphics/assets/sprite.hpp"
 
@@ -39,7 +38,7 @@ graphics::Font::CharacterMap load_character_map( shake::content::ContentManager*
 
     FT_Set_Pixel_Sizes( face, 0, 64 );
 
-    graphics::gl::pixel_store( graphics::gl::PixelStorageMode::UnpackAlignment, graphics::gl::SizeI { 1 } );
+    graphics::gl::pixel_store( graphics::gl::PixelStorageMode::UnpackAlignment, graphics::gl::Size { 1 } );
 
     graphics::Font::CharacterMap character_map { };
 
@@ -69,7 +68,7 @@ graphics::Font::CharacterMap load_character_map( shake::content::ContentManager*
 
         const auto render_pack = graphics::RenderPack2D
         {
-            std::make_shared<graphics::Rectangle2D>( face->glyph->bitmap.width, face->glyph->bitmap.rows ),
+            graphics::make_rectangle_2D( face->glyph->bitmap.width, face->glyph->bitmap.rows ),
             std::make_shared<graphics::Material>( shader )
         };
 
@@ -79,8 +78,8 @@ graphics::Font::CharacterMap load_character_map( shake::content::ContentManager*
         graphics::Font::Character character
         {
             render_pack,
-            { texture->get_width(), texture->get_height() },
-            glm::ivec2( face->glyph->bitmap_left, face->glyph->bitmap_top ),
+            glm::vec2 { texture->get_width(), texture->get_height() },
+            glm::ivec2 { face->glyph->bitmap_left, face->glyph->bitmap_top },
             // advance is stored in units that are 1/64th of a pixel
             // bitshift by 6 since 2^6 = 64
             glm::ivec2( face->glyph->advance.x >> 6, face->glyph->advance.y >> 6 )
@@ -89,7 +88,7 @@ graphics::Font::CharacterMap load_character_map( shake::content::ContentManager*
         character_map.insert( { c, character } );
     }
 
-    graphics::gl::pixel_store( graphics::gl::PixelStorageMode::UnpackAlignment, graphics::gl::SizeI { 4 } ); // Set back to initial value
+    graphics::gl::pixel_store( graphics::gl::PixelStorageMode::UnpackAlignment, graphics::gl::Size { 4 } ); // Set back to initial value
 
     FT_Done_Face( face );
 

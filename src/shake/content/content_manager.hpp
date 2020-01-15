@@ -62,7 +62,7 @@ public:
         register_content_type<graphics::Material>   ( load::load_material   );
         register_content_type<graphics::Shader>     ( load::load_shader     );
         register_content_type<graphics::Texture>    ( load::load_texture    );
-        register_content_type<graphics::VoxelGrid>  ( load::load_voxel_grid );
+        //register_content_type<graphics::VoxelGrid>  ( load::load_voxel_grid );
     }
 
     //----------------------------------------------------------------
