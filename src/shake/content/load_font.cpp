@@ -42,7 +42,8 @@ graphics::Font::CharacterMap load_character_map( shake::content::ContentManager*
 
     graphics::Font::CharacterMap character_map { };
 
-    const auto shader = content_manager->get_or_load<graphics::Shader>( io::Path { "shaders/default_text_shader.glsl" } );
+    const auto program = content_manager->get_or_load<graphics::Program>( io::Path { "shaders/default_text_shader.glsl" } );
+    const auto material = std::make_shared<graphics::Material>( program );
 
     for ( uint8_t c = 0; c < 128; c++)
     {
@@ -66,13 +67,10 @@ graphics::Font::CharacterMap load_character_map( shake::content::ContentManager*
             texture
         );
 
-        const auto render_pack = graphics::RenderPack2D
-        {
-            graphics::make_rectangle_2D( face->glyph->bitmap.width, face->glyph->bitmap.rows ),
-            std::make_shared<graphics::Material>( shader )
-        };
+        const auto geometry = std::make_shared<graphics::Geometry2D>( graphics::make_rectangle_2D( face->glyph->bitmap.width, face->glyph->bitmap.rows ) );
+        const auto render_pack = graphics::RenderPack2D { geometry,  };
 
-        render_pack.material->set_uniform( "u_sampler2", std::make_unique<graphics::UniformTexture>( texture, to_texture_unit_index( graphics::gl::NamedTextureUnit::Albedo ) ) );
+        //render_pack.material->set_uniform( "u_sampler2", graphics::UniformTexture { texture, to_texture_unit_index( graphics::gl::NamedTextureUnit::Albedo ) } );
 
         // Now store character for later use
         graphics::Font::Character character

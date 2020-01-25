@@ -18,7 +18,7 @@ std::shared_ptr<graphics::Material> load_material( shake::content::ContentManage
     const auto json_content = io::file::json::read( path );
 
     const auto shader_path = io::Path{ io::file::json::read_as<std::string>( json_content, "shader" ) };
-    const auto shader = content_manager->get_or_load<graphics::Shader>( shader_path );
+    const auto shader = content_manager->get_or_load<graphics::Program>( shader_path );
 
     auto material = std::make_shared<graphics::Material>( shader );
 
@@ -43,7 +43,7 @@ std::shared_ptr<graphics::Material> load_material( shake::content::ContentManage
                 {
                     const auto texture = content_manager->get_or_load<graphics::Texture>( texture_path );
                     const auto texture_unit_index = to_texture_unit_index( graphics::gl::NamedTextureUnit::Albedo );
-                    material->set_uniform( "u_sampler2", std::make_unique<graphics::UniformTexture>( texture, texture_unit_index ) );
+                    //material->set_uniform( "u_sampler2", graphics::UniformTexture { texture, texture_unit_index } );
                 }
                 else
                 {
@@ -55,7 +55,7 @@ std::shared_ptr<graphics::Material> load_material( shake::content::ContentManage
             {
                 const auto cube_map = content_manager->get_or_load<graphics::CubeMap>( io::Path{ io::file::json::read_as<std::string>( uniform_json, "path" ) } );
                 const auto texture_unit_index = to_texture_unit_index( graphics::gl::NamedTextureUnit::Skybox );
-                material->set_uniform( "u_sampler_cube", std::make_unique<graphics::UniformCubeMap>( cube_map, texture_unit_index ) );
+                //material->set_uniform( "u_sampler_cube", graphics::UniformCubeMap { cube_map, texture_unit_index } );
             }
         }
     }

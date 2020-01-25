@@ -21,7 +21,7 @@
 #include "shake/content/load_font.hpp"
 #include "shake/content/load_material.hpp"
 #include "shake/content/load_mesh.hpp"
-#include "shake/content/load_shader.hpp"
+#include "shake/content/load_program.hpp"
 #include "shake/content/load_sprite.hpp"
 #include "shake/content/load_texture.hpp"
 #include "shake/content/load_voxel_grid.hpp"
@@ -60,7 +60,7 @@ public:
         register_content_type<graphics::CubeMap>    ( load::load_cube_map   );
         register_content_type<graphics::Font>       ( load::load_font       );
         register_content_type<graphics::Material>   ( load::load_material   );
-        register_content_type<graphics::Shader>     ( load::load_shader     );
+        register_content_type<graphics::Program>    ( load::load_program    );
         register_content_type<graphics::Texture>    ( load::load_texture    );
         //register_content_type<graphics::VoxelGrid>  ( load::load_voxel_grid );
     }
