@@ -150,20 +150,20 @@ public:
     //----------------------------------------------------------------
     // Used if you want to obtain some content,
     // and assert it was already preloaded
-    template<typename Content_T>
+    template< typename Content_T >
     const std::shared_ptr<Content_T>& get( const io::Path& path )
     {
-        auto& cache = m_content_cache_registry.at<ContentCache<Content_T>>();
+        auto& cache = m_content_cache_registry.at< ContentCache< Content_T> >();
         DEBUG_ONLY( CHECK( map::has( cache, path ), "Map does not have expected key" ) );
         return cache[ path ];
     }
 
     //----------------------------------------------------------------
     // Used to remove content from the cache
-    template<typename T>
+    template< typename Content_T >
     void unload( const io::Path& path )
     {
-        auto& cache = m_content_cache_registry.at<Content_T>();
+        auto& cache = m_content_cache_registry.at< ContentCache< Content_T > >();
         bool erased = map::erase_if_has( cache, path );
         LOG_IF( !erased, "Unnecessary unload of " + path.get_string() );
     }
