@@ -1,0 +1,16 @@
+[
+    {
+        "target_name" : "shake_content",
+        "target_type" : "shared_library",
+        "source_directory_path" : "src/",
+        "dependencies" : [
+            "freetype",
+            "glm",
+            "json11",
+            "stb",
+            "shake_core",
+            "shake_graphics",
+            "shake_io"
+        ]
+  }
+]
